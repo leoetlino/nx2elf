@@ -125,7 +125,7 @@ struct NsoFile {
 		u8 magic[4];
 		u32 field_4;
 		u32 field_8;
-		u32 field_c;
+		u32 flags;
 		SegmentHeader segments[kNumSegment];
 		// value from .note, can be various lengths :/
 		std::array<u8, 32> gnu_build_id;
@@ -185,7 +185,7 @@ struct NsoFile {
 		if (verbose) {
 			FMT_FIELD(field_4);
 			FMT_FIELD(field_8);
-			FMT_FIELD(field_c);
+			FMT_FIELD(flags);
 		}
 
 		p += sprintf(p, "gnu_build_id: ");
@@ -269,9 +269,13 @@ struct NsoFile {
 			for (int i = 0; i < kNumSegment; i++) {
 				auto &seg = header.segments[i];
 				auto &file_size = header.segment_file_sizes[i];
-				if (!Decompress(&image[seg.mem_offset], seg.mem_size,
-					&file[seg.file_offset], file_size)) {
-					return false;
+				if ((header.flags & (1 << i)) != 0) {
+					if (!Decompress(&image[seg.mem_offset], seg.mem_size,
+						&file[seg.file_offset], file_size)) {
+						return false;
+					}
+				} else {
+					std::memcpy(&image[seg.mem_offset], &file[seg.file_offset], file_size);
 				}
 			}
 			file_type = kNso;
